@@ -93,10 +93,10 @@ class FeatDataset(Dataset):
         return curdata
 
 
-def get_hidden_features(dataloader, backbone=None):
+def get_hidden_features(dataloader, name_modelpth = './modelRes18.pth', backbone=None):
     features = []
     if backbone is None:
-      backbone_weights = torch.load("./resnet50_aug_per_giovanni.pt_resnet50_0.pt", map_location='cpu')
+      backbone_weights = torch.load(name_modelpth, map_location='cpu')
       backbone_weights.keys()
       backbone_weights["fc.weight"].shape
 
@@ -112,6 +112,6 @@ def get_hidden_features(dataloader, backbone=None):
         print(f"Done {i+1}/{len(dataloader)}")
         _ = backbone(data.cuda())
 
-    return torch.cat(features, dim=0), backbone
+    return torch.cat(features, dim=0), backbone.eval()
 
     

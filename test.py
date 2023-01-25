@@ -23,7 +23,6 @@ def test_model(backbone, testloader, netD, device):
     outputs_open = []
     with torch.no_grad():
         for ite in range(10):
-            #noise = torch.randn(100, 512, 8, 8, device=device)
             features = []
             noiseimg = torch.randn(100, 3, 256, 256, device=device)
             

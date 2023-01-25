@@ -12,8 +12,6 @@ def train_model(num_epochs, dataloader, netG, netD, real_label, fake_label, opti
     iters = 0
     netG.cuda()
     netD.cuda()
-    #real_label.cuda()
-    #fake_label.cuda()
     fixed_noise.cuda()
     label_smoothing_factor = 0.15
 

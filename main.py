@@ -56,11 +56,12 @@ def get_args():
                         help="the path to cached off-the-shelf features")
     parser.add_argument("--root_data", type=str, default='./ImageSet',
                         help="the path to find the dir of data")
-    parser.add_argument("--root_data_open", type=tuple, default=("../CV_thesis_GiovanniPinna/ImageSet/extra/Punch_360/",
-                  "../CV_thesis_GiovanniPinna/ImageSet/extra/Punch_652/",
-                  "../CV_thesis_GiovanniPinna/ImageSet/extra/Punch_680/",
-                  "../CV_thesis_GiovanniPinna/ImageSet/No_punzoni/"),
+    parser.add_argument("--root_nopunch", type=str, default='./Crops',
+                        help="the path to find the dir of no punch data")
+    parser.add_argument("--root_extra", type=str, default='./OOD_train',
                         help="the path to find the dir of extra data")
+    parser.add_argument("--name_modelpth", type=str, default='./modelRes18.pth',
+                        help="pretrained model (default: ResNet18)")
 
 
     #For GAN-fea, we set the hyper-parameters as below.
@@ -113,7 +114,7 @@ def main():
     if ('cuda' == args.device) and (args.ngpu > 1):
         netD = nn.DataParallel(netD, list(range(args.ngpu)))
 
-        # Apply the weights_init function to randomly initialize all weights
+    # Apply the weights_init function to randomly initialize all weights
     #  to mean=0, stdev=0.2.
     netD.apply(architecture.weights_init)
 
@@ -123,8 +124,10 @@ def main():
 
     print(args.device)
 
-    trainloader = get_dataloader(args.root_data + "/train", args.batch_size_eval, transforms=get_bare_transforms())
-    testloader = get_dataloader(args.root_data + "/test", args.batch_size_eval,transforms=get_bare_transforms())
+    trainloader = get_dataloader(args.root_data + "/Train", args.batch_size_eval, transforms=get_bare_transforms())
+    testloader = get_dataloader(args.root_data + "/Test", args.batch_size_eval,transforms=get_bare_transforms())
+    nopunchloader = get_dataloader(args.root_nopunch + "/No_punzoni", args.batch_size_eval,transforms=get_bare_transforms())
+    extraloader = get_dataloader(args.root_extra + "/OOD_Train", args.batch_size_eval,transforms=get_bare_transforms())
 
     # TODO da rimettere ma io non ho la corretta path del dataset
     #data_extra = [get_bare_transforms(Image.open(os.path.join(folder, img))) for folder in args.root_data_open for img in
@@ -146,7 +149,7 @@ def main():
     optimizerD = optim.Adam(netD.parameters(), lr=args.lr / 5, betas=(args.beta1, 0.999))
     optimizerG = optim.Adam(netG.parameters(), lr=args.lr, betas=(args.beta1, 0.999))
 
-    features, backbone = get_hidden_features(trainloader)
+    features, backbone = get_hidden_features(trainloader, args.name_modelpth)
 
     print("Start Training...")
     trainset_closeset = FeatDataset(data=features)
@@ -165,6 +168,21 @@ def main():
     outputs_open, outputs_close = test_model(backbone, testloader, netD, device)
 
     plot_roc_curve(outputs_open, outputs_close, args.modelFlag)
+    plot_hist(outputs_open, outputs_close, args.modelFlag)
+
+    features, backbone = get_hidden_features(nopunchloader, backbone)
+    netD.eval()
+    outputs_nopunz = netD(features.cuda()).view(-1)
+    outputs_nopunz = outputs_nopunz.detach().cpu().numpy()
+    plot_roc_curve(outputs_nopunz, outputs_close, args.modelFlag + 'no_punz')
+    plot_hist(outputs_nopunz, outputs_close, args.modelFlag + 'no_punz')
+
+    features, backbone = get_hidden_features(extraloader, backbone)
+    netD.eval()
+    outputs_extra = netD(features.cuda()).view(-1)
+    outputs_extra = outputs_extra.detach().cpu().numpy()
+    plot_roc_curve(outputs_extra, outputs_close, args.modelFlag + 'extra')
+    plot_hist(outputs_extra, outputs_close, args.modelFlag + 'extra')
     
     print("Finish")
 
