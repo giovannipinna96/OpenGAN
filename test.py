@@ -2,7 +2,7 @@ import torch
 
 def evalutate_data(netD, dataloader, device):
     correct = 0
-    netD.eval()
+    netD.train()
     outputs = []
     with torch.no_grad():
         for data in dataloader:
@@ -16,18 +16,6 @@ def test_model(backbone, testloader, netD, device):
 
     x = next(iter(testloader)).to(device)
     (netD(x).view(-1) >= .5).sum().item() / x.size(0)
-
-    #correct = 0
-    #netD.eval()
-
-    #outputs_close = []
-    #with torch.no_grad():
-    #    for test_data in testloader:
-    #        output = netD(test_data.to(device)).view(-1)
-    #        outputs_close += [output.cpu()]
-    #        correct += (output >= .5).sum().item()
-
-    #outputs_close = torch.cat(outputs_close).numpy()
 
     outputs_close, correct = evalutate_data(netD, testloader, device)
     outputs_close = outputs_close.numpy()

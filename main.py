@@ -52,11 +52,11 @@ def get_args():
     parser.add_argument("--lr", type=float, default=0.0001, help="learning rate (default: 0.0001).")
     parser.add_argument("--path_to_feats", type=str, default='./feats',
                         help="the path to cached off-the-shelf features")
-    parser.add_argument("--root_data", type=str, default='./ImageSet',
+    parser.add_argument("--root_data", type=str, default='./PunchesDataset',
                         help="the path to find the dir of data")
-    parser.add_argument("--root_nopunch", type=str, default='./Crops',
+    parser.add_argument("--root_nopunch", type=str, default='./PunchesDataset',
                         help="the path to find the dir of no punch data")
-    parser.add_argument("--root_extra", type=str, default='./OOD_train',
+    parser.add_argument("--root_extra", type=str, default='./PunchesDataset',
                         help="the path to find the dir of extra data")
     parser.add_argument("--name_modelpth", type=str, default='./modelRes18.pth',
                         help="pretrained model (default: ResNet18)")
@@ -120,7 +120,7 @@ def main():
 
     print(args.device)
 
-    trainloader = get_dataloader(os.path.join(args.root_data + "/Train"), args.batch_size_eval, transforms=get_bare_transforms())
+    trainloader = get_dataloader(os.path.join(args.root_data + "/Train"), args.batch_size, transforms=get_bare_transforms())
     testloader = get_dataloader(os.path.join(args.root_data + "/Test"), args.batch_size_eval,transforms=get_bare_transforms())
     nopunchloader = get_dataloader(os.path.join(args.root_nopunch + "/Crops"), args.batch_size_eval, transforms=get_bare_transforms())
     extraloader = get_dataloader(os.path.join(args.root_extra + "/OOD_train"), args.batch_size_eval, transforms=get_bare_transforms())
@@ -147,42 +147,40 @@ def main():
 
     print("Start Training...")
     trainset_closeset = FeatDataset(data=train_features)
-    featureloader_train = DataLoader(trainset_closeset, batch_size=args.batch_size, shuffle=True, num_workers=1)
+    featureloader_train = DataLoader(trainset_closeset, batch_size=args.batch_size_eval, shuffle=True, num_workers=1)
 
     G_losses, D_losses = train_model(num_epochs, featureloader_train, netG, netD, real_label, fake_label, optimizerG, optimizerD, args.nz, fixed_noise, criterion, device, save_dir)
 
     plot_losses(G_losses, D_losses, args.modelFlag)
 
+    print("Start Testing...")
     test_features, backbone = get_hidden_features(testloader, device, backbone)
     torch.save(test_features, "punzoni_res18_features_TEST.pt")
     featureloader_test = FeatDataset(data=test_features)
-    features_testloader = DataLoader(featureloader_test, batch_size=args.batch_size, shuffle=True, num_workers=1)
-
-    print("Start Testing...")
+    features_testloader = DataLoader(featureloader_test, batch_size=args.batch_size_eval, shuffle=True, num_workers=1)
     ## Anziché il backbone, andrebbe passato il feature_loader
     outputs_open, outputs_close = test_model(backbone, features_testloader, netD, device)
-
     plot_roc_curve(outputs_open, outputs_close, args.modelFlag)
     plot_hist(outputs_open, outputs_close, args.modelFlag)
 
+
+    print("Start Testing for no punch features...")
     no_punch_features, backbone = get_hidden_features(nopunchloader, device, backbone)
     featureloader_nopunch = FeatDataset(data=no_punch_features)
-    features_nopunchloader = DataLoader(featureloader_nopunch, batch_size=args.batch_size, shuffle=True, num_workers=1)
+    features_nopunchloader = DataLoader(featureloader_nopunch, batch_size=args.batch_size_eval, shuffle=True, num_workers=1)
     outputs_nopunz, _ = evalutate_data(netD, features_nopunchloader, device)
     netD.train()
-    ## Passare le no_punch_features a Dataloader
-    #outputs_nopunz = netD(no_punch_features.to(device)).view(-1)
     outputs_nopunz = outputs_nopunz.detach().cpu().numpy()
     plot_roc_curve(outputs_nopunz, outputs_close, args.modelFlag + 'no_punz')
     plot_hist(outputs_nopunz, outputs_close, args.modelFlag + 'no_punz')
 
+
+    print("Start Testing for extra features...")
     extra_features, backbone = get_hidden_features(extraloader, device, backbone)
     netD.train()
-    ## Passare le no_punch_features a Dataloader
     featureloader_extra = FeatDataset(data=extra_features)
-    features_extraloader = DataLoader(featureloader_extra, batch_size=args.batch_size, shuffle=True, num_workers=1)
+    features_extraloader = DataLoader(featureloader_extra, batch_size=args.batch_size_eval, shuffle=True, num_workers=1)
     extra_features, _ = evalutate_data(netD, features_extraloader, device)
-    #outputs_extra = netD(extra_features.to(device)).view(-1)
     outputs_extra = extra_features.detach().cpu().numpy()
     plot_roc_curve(outputs_extra, outputs_close, args.modelFlag + 'extra')
     plot_hist(outputs_extra, outputs_close, args.modelFlag + 'extra')
