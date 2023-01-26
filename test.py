@@ -1,21 +1,36 @@
 import torch
 
-def test_model(backbone, testloader, netD, device):
-
-    x = next(iter(testloader)).cuda()
-    (netD(x).view(-1) >= .5).sum().item() / x.size(0)
-
+def evalutate_data(netD, dataloader, device):
     correct = 0
     netD.eval()
-
-    outputs_close = []
+    outputs = []
     with torch.no_grad():
-        for test_data in testloader:
-            output = netD(test_data.cuda()).view(-1)
-            outputs_close += [output.cpu()]
+        for data in dataloader:
+            output = netD(data.to(device)).view(-1)
+            outputs += [output.cpu()]
             correct += (output >= .5).sum().item()
 
-    outputs_close = torch.cat(outputs_close).numpy()
+    return torch.cat(outputs), correct
+
+def test_model(backbone, testloader, netD, device):
+
+    x = next(iter(testloader)).to(device)
+    (netD(x).view(-1) >= .5).sum().item() / x.size(0)
+
+    #correct = 0
+    #netD.eval()
+
+    #outputs_close = []
+    #with torch.no_grad():
+    #    for test_data in testloader:
+    #        output = netD(test_data.to(device)).view(-1)
+    #        outputs_close += [output.cpu()]
+    #        correct += (output >= .5).sum().item()
+
+    #outputs_close = torch.cat(outputs_close).numpy()
+
+    outputs_close, correct = evalutate_data(netD, testloader, device)
+    outputs_close = outputs_close.numpy()
 
     print("Correctly identified items:", correct/len(testloader.dataset))
 
@@ -31,9 +46,8 @@ def test_model(backbone, testloader, netD, device):
             handle = backbone.layer4.register_forward_hook(get_features)
             
             _ = backbone(noiseimg)
-            feats = features[0].cuda()
-            # TODO is correct -> assert feats.shape == (100, 512, 8, 8), f"Features shape is {feats.shape}, expected (100, 512, 8, 8)"
-            assert feats.shape == (100, 2048, 8, 8), f"Featu"
+            feats = features[0].to(device)
+            assert feats.shape == (100, 512, 8, 8), f"Features shape is {feats.shape}, expected (100, 512, 8, 8)"
             output = netD(feats).view(-1)
             outputs_open.append(output.cpu())
             correct_fake += (output < .5).sum().item()

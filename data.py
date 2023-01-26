@@ -93,25 +93,30 @@ class FeatDataset(Dataset):
         return curdata
 
 
-def get_hidden_features(dataloader, name_modelpth = './modelRes18.pth', backbone=None):
+def get_hidden_features(dataloader, device, backbone=None):
     features = []
-    if backbone is None:
-      backbone_weights = torch.load(name_modelpth, map_location='cpu')
-      backbone_weights.keys()
-      backbone_weights["fc.weight"].shape
-
-      backbone = torchvision.models.resnet50(num_classes=backbone_weights["fc.weight"].shape[0])
-      backbone.load_state_dict(backbone_weights)
-      backbone = backbone.cuda()
-      
     def get_features(module, input_, output):
         features.append(output.cpu().detach())
 
     handle = backbone.layer4.register_forward_hook(get_features)
-    for i, (data, _) in enumerate(dataloader):
-        print(f"Done {i+1}/{len(dataloader)}")
-        _ = backbone(data.cuda())
+    backbone.eval()
+    with torch.no_grad():
+        for i, (data, _) in enumerate(dataloader):
+            print(f"Done {i+1}/{len(dataloader)}")
+            _ = backbone(data.to(device))
 
-    return torch.cat(features, dim=0), backbone.eval()
+    return torch.cat(features, dim=0), backbone
+
+def create_backbone(name_modelpth, model, device):
+    backbone_weights = torch.load(name_modelpth, map_location='cpu')
+    backbone_weights.keys()
+    backbone_weights["fc.weight"].shape
+      
+    backbone_class = getattr(torchvision.models, model)
+    backbone = backbone_class(num_classes=backbone_weights["fc.weight"].shape[0])
+    backbone.load_state_dict(backbone_weights)
+    backbone = backbone.to(device).eval()
+
+    return backbone
 
     

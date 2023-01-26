@@ -32,9 +32,8 @@ def weights_init(m):
 
 
 class Generator(nn.Module):
-    def __init__(self, ngpu=1, nz=100, ngf=64, nc=512):
+    def __init__(self, nz=100, ngf=64, nc=512):
         super(Generator, self).__init__()
-        self.ngpu = ngpu
         self.nz = nz
         self.ngf = ngf
         self.nc = nc
@@ -67,36 +66,10 @@ class Generator(nn.Module):
         return self.main(input)
 
 
-class Discriminator(nn.Module):
-    def __init__(self, ngpu=1, nc=512, ndf=64):
-        super(Discriminator, self).__init__()
-        self.ngpu = ngpu
-        self.nc = nc
-        self.ndf = ndf
-        self.main = nn.Sequential(
-            nn.Conv2d(self.nc, self.ndf * 8, 1, 1, 0, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(self.ndf * 8, self.ndf * 4, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(self.ndf * 4),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(self.ndf * 4, self.ndf * 2, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(self.ndf * 2),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(self.ndf * 2, self.ndf, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(self.ndf),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(self.ndf, 1, 1, 1, 0, bias=False),
-            nn.Sigmoid()
-        )
-
-    def forward(self, input):
-        return self.main(input)
-
 
 class DiscriminatorFunnel(nn.Module):
-    def __init__(self, ngpu=1, nc=512, ndf=64):
+    def __init__(self, nc=512, ndf=64):
         super(DiscriminatorFunnel, self).__init__()
-        self.ngpu = ngpu
         self.nc = nc
         self.ndf = ndf
         self.main = nn.Sequential(

@@ -10,9 +10,9 @@ def train_model(num_epochs, dataloader, netG, netD, real_label, fake_label, opti
     G_losses = []
     D_losses = []
     iters = 0
-    netG.cuda()
-    netD.cuda()
-    fixed_noise.cuda()
+    netG.to(device)
+    netD.to(device)
+    fixed_noise.to(device)
     label_smoothing_factor = 0.15
 
     print("Starting Training Loop...")
@@ -20,7 +20,7 @@ def train_model(num_epochs, dataloader, netG, netD, real_label, fake_label, opti
     for epoch in range(num_epochs):
         # For each batch in the dataloader
         #for i, data in enumerate(dataloader, 0):
-        for i, data in enumerate(dataloader):
+        for i, data in enumerate(dataloader, 0):
             ############################
             # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
             ###########################
@@ -88,7 +88,7 @@ def train_model(num_epochs, dataloader, netG, netD, real_label, fake_label, opti
             # Check how the generator is doing by saving G's output on fixed_noise
             if (iters % 500 == 0) or ((epoch == num_epochs - 1) and (i == len(dataloader) - 1)):
                 with torch.no_grad():
-                  fake = netG(fixed_noise.cuda()).detach().cpu()
+                  fake = netG(fixed_noise.to(device)).detach().cpu()
                   #fake.detach().cpu()
                 img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
